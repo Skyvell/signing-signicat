@@ -21,7 +21,7 @@ Figure 1. Architecture overview.
 
   * `inbound/interface/` — nightly NSC interface files (contracts)
   * `inbound/invoice/` — invoice XML for the momsfaktura flow
-* **AWS Lambda — Ingest (fast)**
+* **AWS Lambda — Ingest**
 
   * Trigger: S3 `Put` on interface files
   * Parse & validate rows
@@ -33,9 +33,8 @@ Figure 1. Architecture overview.
   * **Sort key:** `sk` (typed value, e.g., `HEADER#0`, `VEHICLE#<contract_id>`)
   * **`item_type`**: human-readable type (`"header"` or `"vehicle"`)
   * Timestamps: `created_at`, `updated_at`
-  * **No GSIs** in the baseline (webhook correlation handled by callback URL / external reference)
 * **AWS Step Functions (Standard)**
-  Orchestrates all post-ingest stages (states listed below).
+  Orchestrates all post-ingest stages (states listed below). How to distribute the code accross lambdas TBD.
 * **Amazon API Gateway + Webhook Lambda**
   Receives Signicat callbacks at a **bundle-aware** endpoint, resumes the waiting Step Functions task (task token).
 * **OnBase / DMS integration**
@@ -59,8 +58,8 @@ Figure 1. Architecture overview.
    * Vehicle item key: `PK=bundle_id`, `SK="VEHICLE#<contract_id>"`
    * Condition: `attribute_not_exists(sk)` to drop duplicates caused by retries
    * Ensure header: `PK=bundle_id`, `SK="HEADER#0"`, `status="NEW"`
-3. **Start-once lock (recommended):** set `started_at` on the header with `attribute_not_exists(started_at)` to avoid double starts.
-4. **Start SFN per bundle:** `StartExecution` with payload `{ "bundle_id": "<id>" }`. (If the file contains multiple bundles, repeat for each.)
+3. **Start-once lock:** set `started_at` on the header with `attribute_not_exists(started_at)` to avoid double starts.
+4. **Start SFN per bundle:** `StartExecution` with payload `{ "bundle_id": "<id>" }`. If the file contains multiple bundles, repeat for each.
 
 **Output to SFN:**
 
@@ -73,23 +72,28 @@ Figure 1. Architecture overview.
 **1) Initialize Bundle (Lambda)**
 
 * `Query(bundle_id)` to load header + vehicles
-* Validate constraints (duplicates, required fields, size limits)
-* Persist `bundle_order.json` (deterministic page/vehicle order)
+* Validate presence, uniqueness, and ordering
 * Emit:
 
-  * `artifacts_bucket` (temp, SSE-KMS, lifecycle 1–2 days)
-  * `bundle_prefix` (e.g., `bundles/{bundle_id}/`)
-  * compact `vehicles[]` → `{ contract_id, sequence_no }`
+```json
+{
+  "bundle_id": "2025-09-15-DEALER123",
+  "bundle_prefix": "2025-09-15-DEALER123/",
+  "vehicles": [
+    { "contract_id": "35972395", "sequence_no": 12 },
+    { "contract_id": "35972396", "sequence_no": 13 }
+  ],
+  "vehicle_count": 2
+}
 
-**2) Process Vehicles (Map, bounded concurrency)**
+
+**2) Process Vehicles (Map)**
 Per vehicle:
 
 * **Enrich** with third-party lookups; upsert to DynamoDB; set `status`
-* **Render** pages in memory; write short-lived, encrypted artifacts to S3:
-  `s3://contract-artifacts/{bundle_prefix}{contract_id}/pages/page_0001.pdf` (zero-padded)
+* **Render** pages in memory; write short-lived artifacts to S3:
+  `s3://contract-artifacts/{bundle_prefix}{contract_id}/pages/page_0001.pdf`
 * Return **tiny pointers** only: `{ contract_id, vehicle_page_prefix }`
-
-> **Strict “no unsigned at rest” option:** return a `render_payload` pointer and re-render later in Step 3 (no page artifacts written).
 
 **3) Assemble Bundle PDF (Lambda)**
 
