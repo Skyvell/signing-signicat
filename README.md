@@ -85,6 +85,7 @@ Figure 1. Architecture overview.
   ],
   "vehicle_count": 2
 }
+```
 
 
 **2) Process Vehicles (Map)**
