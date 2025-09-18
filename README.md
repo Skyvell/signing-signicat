@@ -151,12 +151,12 @@ Per vehicle:
   "sk": "HEADER#0",
   "item_type": "header",
 
-  "status": "NEW",                  // NEW | READY | SENT | SIGNED | DELIVERED | PARTIAL_FAILED | FAILED
-  "sign_request_id": null,          // set when signing session is created
-  "wait_task_token": null,          // set before SFN wait; read by webhook
-  "signed_uri": null,               // set after Stamp/(Optional) Seal
+  "status": "NEW",                       # NEW | READY | SENT | SIGNED | DELIVERED | PARTIAL_FAILED | FAILED
+  "sign_request_id": null,               # set when signing session is created
+  "wait_task_token": null,               # set before SFN wait; read by webhook
+  "signed_uri": null,                    # set after Stamp/(Optional) Seal
 
-  "started_at": "2025-09-15T21:10:00Z",  // start-once lock
+  "started_at": "2025-09-15T21:10:00Z",  # start-once lock
   "created_at": "2025-09-15T21:00:00Z",
   "updated_at": "2025-09-15T21:10:00Z"
 }
