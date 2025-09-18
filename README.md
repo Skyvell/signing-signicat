@@ -13,6 +13,7 @@ Serverless, event-driven. **Ingestion stays thin**; long-lived orchestration run
 Unsigned PDFS are written temporarily to S3. The invoice path runs in parallel (Figure 1).
 
 ![Alt text](architecture/pdf_signing.png)
+Figure 1. Architecture overview.
 
 ## 2.1 Platform Components
 
