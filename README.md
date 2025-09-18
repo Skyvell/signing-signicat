@@ -69,13 +69,14 @@ Figure 1. Architecture overview.
 
 ### Steps 1–7 — Per-bundle state machine (inside SFN)
 
+NOTE: To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda.
+
 **1) Initialize Bundle (Lambda)**  
 * Load header + vehicles for the bundle  
 * Validate uniqueness and ordering  
 * Persist a deterministic bundle manifest (`bundle_order.json`)  
 * Emit references for artifacts, bundle prefix, and the vehicle list  
 
----
 
 **2) Process Vehicles (Map)**  
 _Per vehicle:_  
@@ -84,7 +85,6 @@ _Per vehicle:_
 * Render PDF pages and store short-lived artifacts  
 * Emit small references to the generated pages  
 
----
 
 **3) Assemble Bundle PDF (Lambda)**  
 * Read the bundle manifest + per-vehicle page references  
@@ -92,7 +92,6 @@ _Per vehicle:_
 * Write one unsigned bundle to storage  
 * Emit a pointer to the unsigned bundle  
 
----
 
 **4) Create Signing Session (Task Token) (Lambda)**  
 * Provide the unsigned bundle to Signicat (stream or pre-signed URL)  
@@ -103,7 +102,6 @@ _Per vehicle:_
 * Receive signing status for the bundle  
 * Resolve the waiting task token to continue the workflow  
 
----
 
 **5) Stamp (Lambda)**  
 * Download signed PDF from Signicat  
@@ -111,7 +109,6 @@ _Per vehicle:_
 * Write the final stamped PDF to permanent storage  
 * Update bundle header
 
----
 
 **6) Deliver to OnBase (Map)**  
 _Per vehicle:_  
@@ -120,10 +117,7 @@ _Per vehicle:_
 * Update per-vehicle status and record delivery receipts
 * Set bundle status: `DELIVERED` or `PARTIAL_FAILED`
 
-
 ---
-
-** To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda.
 
 ## 2.3 Data Model (DynamoDB) — Minimal
 
