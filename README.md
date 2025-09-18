@@ -161,10 +161,6 @@ _Per vehicle:_
 
 ---
 
-# 3. Implementation Plan
-
-## 3.1 Work Packages
-
 # 3. Implementation Plan (Agile / Chronological)
 
 ## Step 1 — Foundations & Infrastructure
