@@ -94,10 +94,13 @@ Per vehicle:
 * **Stream-concatenate** pages into a single multi-page PDF **in memory**
 * Write one **unsigned** bundle to:
   `s3://contract-artifacts/{bundle_prefix}bundle.pdf` (SSE-KMS; lifecycle 1–2 days)
-* Return pointer with integrity:
+* Return pointer:
 
   ```json
-  { "bucket": "...", "key": "...", "version_id": "...", "sha256": "...", "size_bytes": 123456 }
+  {
+      "bucket": "<bucket_name>",
+      "key": "<key>",
+  }
   ```
 
 **4) Create Signing Session (Task Token) (Lambda)**
@@ -145,7 +148,7 @@ Per vehicle:
 
 **Header item (minimal)**
 
-```python
+```json
 {
   "bundle_id": "2025-09-15-DEALER123",
   "sk": "HEADER#0",
@@ -170,8 +173,8 @@ Per vehicle:
   "sk": "VEHICLE#35972395",
   "item_type": "vehicle",
 
-  "contract_id": "35972395",        // optional (kept for readability)
-  "sequence_no": 12,                // deterministic bundling order
+  "contract_id": "35972395",        # optional (kept for readability)
+  "sequence_no": 12,                # deterministic bundling order
   "status": "READY",
 
   "created_at": "2025-09-15T21:03:40Z",
