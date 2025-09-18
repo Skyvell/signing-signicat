@@ -145,7 +145,7 @@ Per vehicle:
 
 **Header item (minimal)**
 
-```json
+```python
 {
   "bundle_id": "2025-09-15-DEALER123",
   "sk": "HEADER#0",
