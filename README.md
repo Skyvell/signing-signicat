@@ -69,7 +69,7 @@ Figure 1. Architecture overview.
 
 ### Steps 1–7 — Per-bundle state machine (inside SFN)
 
-NOTE: To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda.
+NOTE: To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda depending on throughput criteria.
 
 **1) Initialize Bundle (Lambda)**  
 * Load header + vehicles for the bundle  
