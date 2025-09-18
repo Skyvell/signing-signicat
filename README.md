@@ -165,7 +165,7 @@ _Per vehicle:_
 
 ## Step 1 — Foundations & Infrastructure
 - Set up baseline IaC for core AWS services (S3, DynamoDB, Step Functions, Lambda, API Gateway).
-- Establish CI/CD pipeline with linting, unit tests, and automated deployments.
+- Establish CI/CD pipeline with linting, and automated deployments.
 - Create development/staging environments with isolated keys and buckets.
 
 **Goal:** Have a deployable skeleton environment with minimal resources.
