@@ -253,7 +253,7 @@ _Per vehicle:_
 | Step 5 — Assemble Bundle                    | 1 week    |
 | Step 6 — Signing Integration (incl. Webhook)| 2 weeks   |
 | Step 7 — Stamping & Finalization            | 1 week    |
-| Step 8 — Delivery to OnBase                 | 1 week   |
+| Step 8 — Delivery to OnBase                 | 1 week    |
 | Step 9 — Parallel Invoice Flow              | 1 week    |
 | Integration & End-to-End Testing            | 2 weeks   |
 
@@ -262,7 +262,7 @@ _Per vehicle:_
 # 5. Deliverables
 
 * **IaC** for S3, Lambda, Step Functions, API Gateway, DynamoDB, IAM, alarms
-* **DynamoDB schema** (single table, PK/SK only; timestamps; no GSIs)
+* **DynamoDB schema** (single table, PK/SK only; timestamps)
 * **Lambdas:** Ingest, Initialize Bundle, Enrich, Render, Assemble Bundle PDF, Create Signing Session (task-token), Webhook, Stamp, Deliver to OnBase, Invoice
 * **Test assets:** sample interface files & invoice XML; E2E test plan
 
