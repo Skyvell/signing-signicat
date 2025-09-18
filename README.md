@@ -105,7 +105,7 @@ Per vehicle:
       "size_bytes": "123456"
   }
   ```
-{ "bucket": "...", "key": "...", "version_id": "...", "sha256": "...", "size_bytes": 123456 }
+  
 **4) Create Signing Session (Task Token) (Lambda)**
 
 * Stream the unsigned `bundle.pdf` to Signicat (or provide a pre-signed GET URL)
