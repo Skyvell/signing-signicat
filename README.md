@@ -184,6 +184,8 @@ _Per vehicle:_
 * **WP2 — Contract Processing Workflow**
 
   * Step Functions definition; Lambdas: Initialize Bundle, Process Vehicles (Map → Enrich/Render), Assemble Bundle PDF, Create Signing Session (task token), Webhook, Stamp & (Optional) Seal, Deliver to OnBase (Map), Closeout
+
+  TBD how to structure the lambdas. Depneding on throughput criteria it might make sense to have fewer but bigger lambdas.
 * **WP3 — Templates & Rendering**
 
   * Contract template(s), rendering engine, artifact layout (or re-render path), PDF optimization
