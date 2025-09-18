@@ -93,7 +93,6 @@ Per vehicle:
 
 * **Enrich** with third-party lookups; upsert to DynamoDB; set `status`
 * **Render** pages in memory; write short-lived artifacts to S3:
-  `s3://contract-artifacts/{bundle_prefix}{contract_id}/pages/page_0001.pdf`
 * Return **tiny pointers** only: `{ contract_id, vehicle_page_prefix }`
 
 **3) Assemble Bundle PDF (Lambda)**
