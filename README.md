@@ -100,7 +100,7 @@ Per vehicle:
   {
       "bucket": "<bucket_name>",
       "key": "<key>",
-      "version_id: "<version_id>",
+      "version_id": "<version_id>",
       "sha256": "<hash>",
       "size_bytes": "123456"
   }
