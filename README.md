@@ -69,32 +69,27 @@ Figure 1. Architecture overview.
 
 ### Steps 1–7 — Per-bundle state machine (inside SFN)
 
-**1) Initialize Bundle (Lambda)**
+**1) Initialize Bundle (Lambda)**  
+* Query `bundle_id` to load header + vehicles  
+* Persist `bundle_order.json` (deterministic page/vehicle order)  
+* Emit:  
+  * `artifacts_bucket` (temporary, encrypted, short lifecycle)  
+  * `bundle_prefix` (e.g., `bundles/{bundle_id}/`)  
+  * compact `vehicles[]` → `{ contract_id, sequence_no }`  
 
-* `Query(bundle_id)` to load header + vehicles
-* Validate presence, uniqueness, and ordering
-* Emit:
+---
 
+**2) Process Vehicles (Map, bounded concurrency)**  
+Per vehicle:  
+* Enrich with lookups; upsert to DynamoDB; set `status`  
+* Render pages in memory; write short-lived, encrypted artifacts under `{bundle_prefix}{contract_id}/pages/`  
+* Return tiny pointers only:  
 ```json
-{
-  "bundle_id": "2025-09-15-DEALER123",
-  "bundle_prefix": "2025-09-15-DEALER123/",
-  "vehicles": [
-    { "contract_id": "35972395", "sequence_no": 12 },
-    { "contract_id": "35972396", "sequence_no": 13 }
-  ],
-  "vehicle_count": 2
-}
+  { 
+    "contract_id": "<id>", 
+    "vehicle_page_prefix": "<prefix>" 
+  }
 ```
-
-
-**2) Process Vehicles (Map)**
-Per vehicle:
-
-* **Enrich** with third-party lookups; upsert to DynamoDB; set `status`
-* **Render** pages in memory; write short-lived artifacts to S3:
-* Return **tiny pointers** only: `{ contract_id, vehicle_page_prefix }`
-
 **3) Assemble Bundle PDF (Lambda)**
 
 * Read `bundle_order.json` + `vehicle_page_prefix` values
