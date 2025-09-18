@@ -47,7 +47,7 @@ Figure 1. Architecture overview.
 **End-to-end flow:**
 
 * **Step 0 (outside Step Functions):** S3-triggered **Ingest Lambda** parses the nightly file, writes records to DynamoDB **idempotently**, and **starts one Step Functions execution per bundle**.
-* **Steps 1–7 (inside Step Functions):** The **per-bundle** state machine processes vehicles, assembles the bundle PDF, creates the signing session (task token + webhook), stamps/seals, delivers to OnBase, and closes out.
+* **Steps 1–6 (inside Step Functions):** The **per-bundle** state machine processes vehicles, assembles the bundle PDF, creates the signing session (task token + webhook), stamps, delivers to OnBase, and closes out.
 
 ### Step 0 — Ingest & Orchestration Handoff (outside SFN)
 
@@ -70,77 +70,60 @@ Figure 1. Architecture overview.
 ### Steps 1–7 — Per-bundle state machine (inside SFN)
 
 **1) Initialize Bundle (Lambda)**  
-* Query `bundle_id` to load header + vehicles  
-* Persist `bundle_order.json` (deterministic page/vehicle order)  
-* Emit:  
-  * `artifacts_bucket` (temporary, encrypted, short lifecycle)  
-  * `bundle_prefix` (e.g., `bundles/{bundle_id}/`)  
-  * compact `vehicles[]` → `{ contract_id, sequence_no }`  
+* Load header + vehicles for the bundle  
+* Validate uniqueness and ordering  
+* Persist a deterministic bundle manifest (`bundle_order.json`)  
+* Emit references for artifacts, bundle prefix, and the vehicle list  
 
 ---
 
 **2) Process Vehicles (Map)**  
-Per vehicle:  
-* Enrich with lookups; upsert to DynamoDB; set `status`  
-* Render PDF pages.
-* Save 
-```json
-  { 
-    "contract_id": "<id>", 
-    "vehicle_page_prefix": "<prefix>" 
-  }
-```
-**3) Assemble Bundle PDF**
+_Per vehicle:_  
+* Enrich data with lookups  
+* Update vehicle status in DynamoDB  
+* Render PDF pages and store short-lived artifacts  
+* Emit small references to the generated pages  
 
-* Read `bundle_order.json` + `vehicle_page_prefix` values
-* **Stream-concatenate** pages into a single multi-page PDF **in memory**
-* Write one **unsigned** bundle to:
-  `s3://contract-artifacts/{bundle_prefix}bundle.pdf` (SSE-KMS; lifecycle 1–2 days)
-* Return pointer:
+---
 
-  ```json
-  {
-      "bucket": "<bucket_name>",
-      "key": "<key>",
-      "version_id": "<version_id>",
-      "sha256": "<hash>",
-      "size_bytes": "123456"
-  }
-  ```
-  
-**4) Create Signing Session (Task Token) (Lambda)**
+**3) Assemble Bundle PDF (Lambda)**  
+* Read the bundle manifest + per-vehicle page references  
+* Concatenate all pages in memory into a single PDF  
+* Write one unsigned bundle to storage  
+* Emit a pointer to the unsigned bundle  
 
-* Stream the unsigned `bundle.pdf` to Signicat (or provide a pre-signed GET URL)
-* Store `sign_request_id` on the header
-* Store `wait_task_token` on the header
-* Use **bundle-aware callback URL** (e.g., `/sign-webhook/{bundle_id}`) *or* set Signicat `external_reference=bundle_id`
-* **Wait** for the webhook (task token)
+---
 
-**Webhook Callback (API GW + Lambda)**
+**4) Create Signing Session (Task Token) (Lambda)**  
+* Provide the unsigned bundle to Signicat (stream or pre-signed URL)  
+* Store signing request info and task token on the bundle header  
+* Wait for the webhook callback to resume execution  
 
-* Extract `bundle_id` from the URL path (or from `external_reference` in the payload)
-* `GetItem` header → read `wait_task_token` → call `SendTaskSuccess/Failure` to resume SFN
+**Webhook Callback (API GW + Lambda)**  
+* Receive signing status for the bundle  
+* Resolve the waiting task token to continue the workflow  
 
-**5) Stamp & (Optional) Seal (Lambda)**
+---
 
-* Download signer’s PDF; **stamp all pages** visibly
-* If required, apply an organizational **seal** (second PAdES) to protect post-processing
-* Write final to **permanent** bucket: `s3://contract-signed/bundles/{bundle_id}/bundle_stamped.pdf`
-* Update header `signed_uri`
-* **Cleanup** unsigned artifacts (including the temp `bundle.pdf`)
+**5) Stamp (Lambda)**  
+* Download signed PDF from Signicat  
+* Apply visible stamps on all pages  
+* Write the final stamped PDF to permanent storage  
+* Update bundle header
 
-**6) Deliver to OnBase (Map)**
-Per vehicle:
+---
 
-* Build **DIP**, deliver the **same signed bundle** + signing log/ID to OnBase
-* Update per-vehicle `status`; capture delivery receipts; optional notifications
+**6) Deliver to OnBase (Map)**  
+_Per vehicle:_  
+* Build a delivery package (DIP)  
+* Deliver the same signed bundle + signing log/ID  
+* Update per-vehicle status and record delivery receipts
+* Set bundle status: `DELIVERED` or `PARTIAL_FAILED`
 
-**7) Closeout & Notifications (Lambda)**
 
-* If all delivered → header `status=DELIVERED`, else `PARTIAL_FAILED`
-* Emit summary notification (email/SNS/Teams)
+---
 
-> **Handoff rule:** States pass **only small JSON pointers** (S3 `bucket/key/version_id/sha256`). Never pass PDF bytes through SFN (256 KB limit). If strict on unsigned persistence, **merge Steps 3 & 4**: assemble in memory and stream directly to Signicat in the same task.
+** To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda.
 
 ## 2.3 Data Model (DynamoDB) — Minimal
 
