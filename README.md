@@ -79,18 +79,18 @@ Figure 1. Architecture overview.
 
 ---
 
-**2) Process Vehicles (Map, bounded concurrency)**  
+**2) Process Vehicles (Map)**  
 Per vehicle:  
 * Enrich with lookups; upsert to DynamoDB; set `status`  
-* Render pages in memory; write short-lived, encrypted artifacts under `{bundle_prefix}{contract_id}/pages/`  
-* Return tiny pointers only:  
+* Render PDF pages.
+* Save 
 ```json
   { 
     "contract_id": "<id>", 
     "vehicle_page_prefix": "<prefix>" 
   }
 ```
-**3) Assemble Bundle PDF (Lambda)**
+**3) Assemble Bundle PDF**
 
 * Read `bundle_order.json` + `vehicle_page_prefix` values
 * **Stream-concatenate** pages into a single multi-page PDF **in memory**
@@ -233,17 +233,7 @@ Per vehicle:
 
 ---
 
-# 4. Non-Functional Requirements & SLAs
-
-* **Security:** SSE-KMS on all buckets; IAM least privilege; secrets in AWS Secrets Manager; optional private egress (VPC endpoints). Default: **do not retain unsigned PDFs** beyond short-lived artifacts; retain **final signed PDF + evidence** long-term with lifecycle to archive.
-* **Reliability:** conditional writes for idempotency; per-task `Retry` with backoff/jitter; explicit `TimeoutSeconds`; DLQs/alerts.
-* **Performance:** Map `MaxConcurrency` sized to vendor RPS (e.g., 10–50); nightly volume ≈ 1,000 records.
-* **Observability:** per-stage metrics; dashboards; alarms for SFN execution failures and long signing waits; structured logs with `bundle_id` / `contract_id`.
-* **Compliance/Audit:** store signing IDs/logs; make final documents optionally LTV (persist OCSP/CRL data).
-
----
-
-# 5. Delivery Timeline & Estimates
+# 4. Delivery Timeline & Estimates
 
 | Work Package                               | Estimate  |
 | ------------------------------------------ | --------- |
@@ -261,7 +251,7 @@ Per vehicle:
 
 ---
 
-# 6. Deliverables
+# 5. Deliverables
 
 * **IaC** for S3, Lambda, Step Functions, API Gateway, DynamoDB, IAM, alarms
 * **DynamoDB schema** (single table, PK/SK only; timestamps; no GSIs)
@@ -273,13 +263,6 @@ Per vehicle:
 
 ---
 
-# 7. Environments & CI/CD
-
-* **Environments:** `dev`, `stage`, `prod` (isolated KMS keys and buckets)
-* **Pipelines:** lint/type-check → unit tests → synth/deploy IaC → integration tests (stage) → manual approval → prod
-* **Secrets:** per-env in Secrets Manager; rotation policy documented
-
----
 
 # 8. Test Strategy
 
@@ -289,19 +272,4 @@ Per vehicle:
 * **Performance:** 1k-row batch; RPS caps; PDF size checks
 * **Security:** IAM policy validation; S3/KMS enforcement; secret handling
 
----
 
-# 9. Risks & Mitigations
-
-* **Vendor RPS/latency:** bound Map concurrency; retries with jitter; circuit breakers
-* **Large PDFs:** optimize assets; split to multi-document session if needed
-* **Webhook failures:** retries + DLQ; alerting; manual resume runbook
-* **OnBase variability:** early E2E spike; clear error semantics; DLQ + replay
-
----
-
-# 10. Outstanding Decisions
-
-* Final policy on **artifacts** (temporary page artifacts vs. strict in-memory re-render)
-* Required **per-page stamp** content and whether to **seal** post-stamp
-* Source of truth and cadence for **dealer ↔ signee** mappings
