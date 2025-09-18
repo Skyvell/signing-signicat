@@ -12,6 +12,8 @@ Serverless, event-driven. **Ingestion stays thin**; long-lived orchestration run
 
 Contracts are produced **in memory**; if unsigned fragments are written, they are short-lived and encrypted. The invoice path runs in parallel.
 
+![Alt text](architecture/pdf_signing.png)
+
 ## 2.1 Platform Components
 
 * **Amazon S3 (Inbound)**
