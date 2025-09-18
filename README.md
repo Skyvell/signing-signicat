@@ -187,13 +187,6 @@ Per vehicle:
 }
 ```
 
-**Access patterns (no GSIs)**
-
-* **Ingest:** conditional `PutItem` on `attribute_not_exists(sk)` for vehicles; `UpdateItem` header with `attribute_not_exists(started_at)`
-* **Workflow:** `Query(bundle_id)` to read header + vehicles; update header `status`, `sign_request_id`, `wait_task_token`, `signed_uri`
-* **Webhook:** `bundle_id` from path or external reference → `GetItem` header → use `wait_task_token` to `SendTaskSuccess/Failure`
-* **Ops:** CloudWatch + Step Functions metrics/logs/dashboards for cross-bundle visibility (no indexes needed)
-
 ---
 
 # 3. Implementation Plan
