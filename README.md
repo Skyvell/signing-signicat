@@ -67,7 +67,7 @@ Figure 1. Architecture overview.
 { "bundle_id": "<id>" }
 ```
 
-### Steps 1–7 — Per-bundle state machine (inside SFN)
+### Steps 1–6 — Per-bundle state machine (inside SFN)
 
 NOTE: To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda depending on throughput criteria.
 
@@ -77,7 +77,6 @@ NOTE: To be decided how to structure the lambdas inside the step function. Proba
 * Persist a deterministic bundle manifest (`bundle_order.json`)  
 * Emit references for artifacts, bundle prefix, and the vehicle list  
 
-
 **2) Process Vehicles (Map)**  
 _Per vehicle:_  
 * Enrich data with lookups  
@@ -85,13 +84,11 @@ _Per vehicle:_
 * Render PDF pages and store short-lived artifacts  
 * Emit small references to the generated pages  
 
-
 **3) Assemble Bundle PDF (Lambda)**  
 * Read the bundle manifest + per-vehicle page references  
 * Concatenate all pages in memory into a single PDF  
 * Write one unsigned bundle to storage  
 * Emit a pointer to the unsigned bundle  
-
 
 **4) Create Signing Session (Task Token) (Lambda)**  
 * Provide the unsigned bundle to Signicat (stream or pre-signed URL)  
@@ -102,13 +99,11 @@ _Per vehicle:_
 * Receive signing status for the bundle  
 * Resolve the waiting task token to continue the workflow  
 
-
 **5) Stamp (Lambda)**  
 * Download signed PDF from Signicat  
 * Apply visible stamps on all pages  
 * Write the final stamped PDF to permanent storage  
 * Update bundle header
-
 
 **6) Deliver to OnBase (Map)**  
 _Per vehicle:_  
@@ -170,56 +165,101 @@ _Per vehicle:_
 
 ## 3.1 Work Packages
 
-* **WP1 — Ingest & DynamoDB**
+# 3. Implementation Plan (Agile / Chronological)
 
-  * S3 trigger, parsing/validation, conditional idempotent writes
-  * DynamoDB single-table schema (PK=`bundle_id`, SK=`sk`), timestamps, start-once lock
-  * Start Step Functions per bundle
-* **WP2 — Contract Processing Workflow**
+## Step 1 — Foundations & Infrastructure
+- Set up baseline IaC for core AWS services (S3, DynamoDB, Step Functions, Lambda, API Gateway).
+- Establish CI/CD pipeline with linting, unit tests, and automated deployments.
+- Create development/staging environments with isolated keys and buckets.
 
-  * Step Functions definition; Lambdas: Initialize Bundle, Process Vehicles (Map → Enrich/Render), Assemble Bundle PDF, Create Signing Session (task token), Webhook, Stamp & (Optional) Seal, Deliver to OnBase (Map), Closeout
+**Goal:** Have a deployable skeleton environment with minimal resources.
 
-  TBD how to structure the lambdas. Depneding on throughput criteria it might make sense to have fewer but bigger lambdas.
-* **WP3 — Templates & Rendering**
+## Step 2 — Ingest & Orchestration
+- Implement S3-triggered ingest Lambda:
+  - Parse interface files.
+  - Validate rows.
+  - Write header + vehicles into DynamoDB with conditional puts (idempotent).
+- Implement start-once lock and kick off one Step Functions execution per bundle.
 
-  * Contract template(s), rendering engine, artifact layout (or re-render path), PDF optimization
-* **WP4 — Signicat Integration**
+**Goal:** Reliable ingestion flow that seeds DynamoDB and launches the state machine.
 
-  * Upload/stream, session creation, **bundle-aware callback URL** or `external_reference=bundle_id`, store/read `wait_task_token`, idempotent retries
-* **WP5 — OnBase / DIP Integration**
+## Step 3 — Bundle Initialization
+- Implement Initialize Bundle Lambda:
+  - Query DynamoDB for header + vehicles.
+  - Validate uniqueness and order.
+  - Persist `bundle_order.json` (manifest).
+- Emit references for artifacts and vehicle list to the workflow.
 
-  * DIP creation API, delivery semantics, receipts, retries, idempotency
-* **WP6 — Invoice Flow**
+**Goal:** Deterministic per-bundle setup, ready for processing.
 
-  * XML parsing, invoice template, emailing (dealer + SF mailboxes)
-* **WP7 — Observability & Operations**
+## Step 4 — Vehicle Processing & Rendering
+- Implement vehicle processing in a Map state:
+  - Enrich vehicle data.
+  - Update DynamoDB status.
+  - Render contract PDFs (per-page).
+  - Save short-lived artifacts.
+- Return references for downstream assembly.
 
-  * Metrics, dashboards, alarms (SFN failures, long waits), DLQs, runbooks (reprocess bundle, resend signing, partial retry)
-* **WP8 — Security & Compliance**
+**Goal:** Individual vehicle contracts are enriched and rendered correctly.
 
-  * KMS policies, least-privilege IAM, Secrets Manager, optional VPC endpoints, LTV (OCSP/CRL) if needed
+## Step 5 — Assemble Bundle
+- Implement assembly Lambda:
+  - Read `bundle_order.json` and vehicle page references.
+  - Concatenate all pages into a single unsigned PDF.
+  - Write the unsigned bundle to storage.
 
-## 3.2 Acceptance (per WP)
+**Goal:** Bundled contracts are available as a single PDF.
 
-* Idempotent ingest (duplicates dropped), SFN starts per bundle, end-to-end happy path to **signed + delivered**; alerts on failure; invoice emails sent.
+## Step 6 — Signing Integration
+- Implement Create Signing Session Lambda:
+  - Provide unsigned bundle to Signicat (stream/pre-signed URL).
+  - Store signing request ID and task token.
+- Implement API Gateway + Webhook Lambda:
+  - Resume Step Functions execution on callback.
+
+**Goal:** Full signing loop established, with workflow paused and resumed via webhook.
+
+## Step 7 — Stamping & Finalization
+- Implement stamping Lambda:
+  - Download signed PDF from Signicat.
+  - Apply visible stamps to all pages.
+  - Write final signed bundle to permanent storage.
+
+**Goal:** Produce finalized, stamped contracts suitable for delivery and archive.
+
+## Step 8 — Delivery to OnBase
+- Implement delivery Map state:
+  - Build per-vehicle DIPs.
+  - Deliver signed bundle + signing log/ID.
+  - Update vehicle statuses and capture receipts.
+  - Mark bundle status as `DELIVERED` or `PARTIAL_FAILED`.
+
+**Goal:** Signed contracts are delivered into OnBase with proper logging.
+
+## Step 9 — Parallel Invoice Flow
+- Implement invoice processing Lambda:
+  - Parse invoice XML.
+  - Generate invoice PDF.
+  - Distribute via email to dealer + SF mailboxes.
+
+**Goal:** Independent, working invoice distribution path.
 
 ---
 
 # 4. Delivery Timeline & Estimates
 
-| Work Package                               | Estimate  |
-| ------------------------------------------ | --------- |
-| CI/CD & baseline IaC                       | 1 week    |
-| WP1 Ingest & DynamoDB                      | 3 weeks   |
-| WP2 Workflow (SFN + Lambdas)               | 5 weeks   |
-| WP3 Templates & Rendering                  | 1–2 weeks |
-| WP4 Signicat Integration                   | 1–2 weeks |
-| WP5 OnBase / DIP Integration               | 2 weeks   |
-| WP6 Invoice Flow                           | 1 week    |
-| WP7–WP8 Observability, Security, hardening | 1–2 weeks |
-| Testing (unit/integration/E2E/perf)        | 1–2 weeks |
-
-*Estimates overlap; external integrations drive variance.*
+| Work Package / Step                         | Estimate  |
+| ------------------------------------------  | --------- |
+| Step 1 — Foundations & Infrastructure       | 1 week    |
+| Step 2 — Ingest & Orchestration             | 2 weeks   |
+| Step 3 — Bundle Initialization              | 1 week    |
+| Step 4 — Vehicle Processing & Rendering     | 2 weeks   |
+| Step 5 — Assemble Bundle                    | 1 week    |
+| Step 6 — Signing Integration (incl. Webhook)| 2 weeks   |
+| Step 7 — Stamping & Finalization            | 1 week    |
+| Step 8 — Delivery to OnBase                 | 1 week   |
+| Step 9 — Parallel Invoice Flow              | 1 week    |
+| Integration & End-to-End Testing            | 2 weeks   |
 
 ---
 
@@ -227,21 +267,7 @@ _Per vehicle:_
 
 * **IaC** for S3, Lambda, Step Functions, API Gateway, DynamoDB, IAM, alarms
 * **DynamoDB schema** (single table, PK/SK only; timestamps; no GSIs)
-* **Lambdas:** Ingest, Initialize Bundle, Enrich, Render, Assemble Bundle PDF, Create Signing Session (task-token), Webhook, Stamp & (Optional) Seal, Deliver to OnBase, Closeout, Invoice
-* **Templates:** contract & invoice (assets included)
-* **Operational docs:** runbooks (reprocess bundle, resend signing, partial retries)
-* **Monitoring:** dashboards, alerts, metrics
+* **Lambdas:** Ingest, Initialize Bundle, Enrich, Render, Assemble Bundle PDF, Create Signing Session (task-token), Webhook, Stamp, Deliver to OnBase, Invoice
 * **Test assets:** sample interface files & invoice XML; E2E test plan
-
----
-
-
-# 8. Test Strategy
-
-* **Unit/contract tests** for Lambdas (parsing, enrichment, rendering)
-* **Integration tests:** Step Functions happy path with mocked Signicat & OnBase; webhook path
-* **End-to-end:** nightly file → signed & delivered bundle → per-vehicle DIP
-* **Performance:** 1k-row batch; RPS caps; PDF size checks
-* **Security:** IAM policy validation; S3/KMS enforcement; secret handling
 
 
