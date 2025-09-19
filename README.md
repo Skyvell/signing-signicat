@@ -298,7 +298,6 @@ Figure 1. Architecture overview.
 
 **Notes:**  
 - Signing integration (Step 6) and vehicle rendering (Step 4) are the most time-consuming and uncertain parts.  
-- Testing, retries, and error handling are included in the Integration & Testing phase.  
 - Timeline assumes one developer working end-to-end with no external blockers.  
 
 # 5. Deliverables
@@ -334,13 +333,7 @@ Figure 1. Architecture overview.
     - Happy path (all vehicles delivered)  
     - Retry/idempotency cases  
     - Partial failures and recovery  
-    - Webhook resume flow  
-
-* **Operational Runbook**  
-  - How to monitor Step Functions executions and DynamoDB status.  
-  - How to retry or reprocess failed bundles/vehicles.  
-  - Handling of partial deliveries.  
-  - Guidance on alarms and alert responses.  
+    - Webhook resume flow
 
 
 
