@@ -263,22 +263,6 @@ Figure 1. Architecture overview.
 
 # 4. Delivery Timeline & Estimates
 
-| Work Package / Step                         | Estimate  |
-| ------------------------------------------  | --------- |
-| Step 1 — Foundations & Infrastructure       | 1 week    |
-| Step 2 — Ingest & Orchestration             | 2 weeks   |
-| Step 3 — Bundle Initialization              | 1 week    |
-| Step 4 — Vehicle Processing & Rendering     | 2 weeks   |
-| Step 5 — Assemble Bundle                    | 1 week    |
-| Step 6 — Signing Integration (incl. Webhook)| 2 weeks   |
-| Step 7 — Stamping & Finalization            | 1 week    |
-| Step 8 — Delivery to OnBase                 | 1 week    |
-| Step 9 — Parallel Invoice Flow              | 1 week    |
-| Integration & End-to-End Testing            | 2 weeks   |
-
-
-# 4. Delivery Timeline & Estimates
-
 | Work Package / Step                         | Estimated Duration |
 | ------------------------------------------- | ------------------ |
 | Step 1 — Foundations & Infrastructure       | 1 week             |
@@ -297,6 +281,8 @@ Figure 1. Architecture overview.
 **Notes:**  
 - Signing integration (Step 6) and vehicle rendering (Step 4) are the most time-consuming and uncertain parts.  
 - Timeline assumes one developer working end-to-end with no external blockers.  
+
+---
 
 # 5. Deliverables
 
