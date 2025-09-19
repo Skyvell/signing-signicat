@@ -98,9 +98,10 @@ _Per vehicle:_
 * Resolve the waiting task token to continue the workflow  
 
 **5) Finalize signing**  
+* Handle signing result.
 * Download signed PDF from Signicat   
 * Write the final stamped PDF to permanent storage  
-* Update bundle header
+* Update bundle header status
 
 **6) Deliver to OnBase (Map)**  
 _Per vehicle:_  
