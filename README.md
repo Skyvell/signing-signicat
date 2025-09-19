@@ -129,12 +129,17 @@ _Per vehicle:_
   "sk": "HEADER#0",
   "item_type": "header",
 
-  "status": "NEW",                       # NEW | READY | SENT | SIGNED | DELIVERED | PARTIAL_FAILED | FAILED
-  "sign_request_id": null,               # set when signing session is created
-  "wait_task_token": null,               # set before SFN wait; read by webhook
-  "signed_uri": null,                    # set after Stamp/(Optional) Seal
+  "status": "NEW",                  // NEW | READY | SIGNED | DELIVERED | PARTIAL_FAILED | FAILED
+  "vehicle_count": 42,              // convenience count
 
-  "started_at": "2025-09-15T21:10:00Z",  # start-once lock
+  "unsigned_bundle_uri": null,      // set after assemble
+  "signed_bundle_uri": null,        // set after signing + stamping
+  "signing_log_uri": null,          // set after signing
+
+  "sign_request_id": null,          // set when signing session is created
+  "wait_task_token": null,          // set before SFN wait; read by webhook
+
+  "started_at": "2025-09-15T21:10:00Z",  // start-once lock
   "created_at": "2025-09-15T21:00:00Z",
   "updated_at": "2025-09-15T21:10:00Z"
 }
@@ -148,9 +153,13 @@ _Per vehicle:_
   "sk": "VEHICLE#35972395",
   "item_type": "vehicle",
 
-  "contract_id": "35972395",        # optional (kept for readability)
-  "sequence_no": 12,                # deterministic bundling order
-  "status": "READY",
+  "contract_id": "35972395",
+  "sequence_no": 12,                 // deterministic bundle order
+  "status": "READY",                 // READY | RENDERED | DELIVERED | FAILED
+
+  "dip_id": null,                    // set on delivery
+  "onbase_receipt": null,
+  "delivered_at": null,
 
   "created_at": "2025-09-15T21:03:40Z",
   "updated_at": "2025-09-15T21:04:12Z"
@@ -163,7 +172,7 @@ _Per vehicle:_
 
 ## Step 1 — Foundations & Infrastructure
 - Set up baseline IaC for core AWS services (S3, DynamoDB, Step Functions, Lambda, API Gateway).
-- Establish CI/CD pipeline with linting, and automated deployments.
+- Establish CI/CD pipeline.
 - Create development/staging environments with isolated keys and buckets.
 
 **Goal:** Have a deployable skeleton environment with minimal resources.
