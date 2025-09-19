@@ -1,4 +1,4 @@
-# 1. Overview
+a# 1. Overview
 
 Build a serverless AWS solution that (a) creates one contract PDF per vehicle from the nightly NSC interface file, supporting single-page and **bundled** multi-page PDFs with duplicate protection; (b) initiates and tracks e-signing via **Signicat** to the authorized dealer signee; (c) enforces a **visible e-signature stamp on all pages**; and (d) delivers the **signed PDF + signing log/ID + one DIP per vehicle to OnBase** (for bundles, the same file is referenced per vehicle). Additionally, generate and email an **SF “momsfaktura” PDF** from invoice XML to the dealer and SF mailboxes.
 
@@ -201,8 +201,6 @@ Figure 1. Architecture overview.
   - Set header status to `READY`.  
 
 **Goal:** Deterministic bundle setup with ordering and vehicle count tracked in DynamoDB.  
-
----
 
 **Step 4 — Vehicle Processing & Rendering**
 - Implement vehicle processing in a Step Functions Map state:  
