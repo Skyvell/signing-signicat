@@ -69,48 +69,54 @@ Figure 1. Architecture overview.
 
 ### Steps 1–6 — Per-bundle state machine (inside SFN)
 
-NOTE: To be decided how to structure the lambdas inside the step function. Probably it makes sense to merge some of them into a bigger lambda depending on throughput criteria.
+> **Note:** We can merge smaller states into larger Lambdas depending on throughput and cost goals. Payloads remain minimal — Step Functions just passes `bundle_id` (and in Maps, `bundle_id + contract_id`).
+
 
 **1) Initialize Bundle (Lambda)**  
-* Load header + vehicles for the bundle  
-* Validate uniqueness and ordering  
-* Persist a deterministic bundle manifest (`bundle_order.json`)  
-* Emit references for artifacts, bundle prefix, and the vehicle list  
+* Query DynamoDB for the header and all vehicles for the bundle (`PK = bundle_id`).  
+* Validate uniqueness and that each vehicle has a `sequence_no`.  
+* Count vehicles and update the header with `vehicle_count`.  
+* Set `status = READY`.  
 
 **2) Process Vehicles (Map)**  
-_Per vehicle:_  
-* Enrich data with lookups  
-* Update vehicle status in DynamoDB  
-* Render PDF pages and store short-lived artifacts    
+* Input per item: `{ bundle_id, contract_id }`.  
+* Iterator Lambda responsibilities:  
+  * Read the vehicle item (`PK=bundle_id, SK=VEHICLE#contract_id`).  
+  * Enrich with external lookups if required.  
+  * Render per-vehicle contract PDF pages into S3 storage.  
+  * Update vehicle `status = RENDERED` in DynamoDB.  
 
 **3) Assemble Bundle PDF (Lambda)**  
-* Read the bundle manifest + per-vehicle page references  
-* Concatenate all pages in memory into a single PDF  
-* Write one unsigned bundle to storage   
+* Query all vehicle items for the bundle.  
+* Sort them by `sequence_no` from DynamoDB.  
+* Read their rendered pages from S3 and concatenate into a single unsigned PDF.  
+* Store the unsigned bundle in S3 and update the header with `unsigned_bundle_uri`.  
 
 **4) Create Signing Session (Task Token) (Lambda)**  
-* Provide the unsigned bundle to Signicat (stream or pre-signed URL)  
-* Store signing request info and task token on the bundle header  
-* Wait for the webhook callback to resume execution  
+* Read `unsigned_bundle_uri` from the header.  
+* Start a signing session with Signicat (provide pre-signed S3 URL).  
+* Store `sign_request_id` and `wait_task_token` on the header.
+* Pause execution until webhook callback arrives.  
 
 **Webhook Callback (API GW + Lambda)**  
-* Receive signing status for the bundle  
-* Resolve the waiting task token to continue the workflow  
+* Receive signing status for the bundle.  
+* Look up the header with `bundle_id`.  
+* Use the stored task token to resume the waiting Step Functions execution.  
 
-**5) Finalize signing**  
-* Handle signing result.
-* Download signed PDF from Signicat   
-* Write the final stamped PDF to permanent storage  
-* Update bundle header status
+**5) Finalize Signing (Lambda)**  
+* Download the signed PDF from Signicat.    
+* Write the finalized signed bundle to S3.  
+* Update the header with `signed_bundle_uri` and `status = SIGNED`.  
+* Store `signing_log_uri` if provided by Signicat.  
 
 **6) Deliver to OnBase (Map)**  
-_Per vehicle:_  
-* Build a delivery package (DIP)  
-* Deliver the same signed bundle + signing log/ID  
-* Update per-vehicle status and record delivery receipts
-* Set bundle status: `DELIVERED` or `PARTIAL_FAILED`
-
----
+* Input per item: `{ bundle_id, contract_id }`.  
+* Iterator Lambda responsibilities:  
+  * Read the vehicle item and the header’s `signed_bundle_uri` + `signing_log_uri`.  
+  * Build a DIP package for the vehicle.  
+  * Deliver the signed bundle, signing log/ID, and DIP to OnBase.  
+  * Update vehicle `status = DELIVERED`, plus `dip_id`, `onbase_receipt`, and `delivered_at`.  
+* After the Map completes, set bundle header `status = DELIVERED` or `PARTIAL_FAILED`.  
 
 ## 2.3 Data Model (DynamoDB) — Minimal
 
