@@ -278,13 +278,69 @@ Figure 1. Architecture overview.
 | Step 9 — Parallel Invoice Flow              | 1 week    |
 | Integration & End-to-End Testing            | 2 weeks   |
 
----
+
+# 4. Delivery Timeline & Estimates
+
+| Work Package / Step                         | Estimated Duration |
+| ------------------------------------------- | ------------------ |
+| Step 1 — Foundations & Infrastructure       | 1 week             |
+| Step 2 — Ingest & Orchestration             | 1 week             |
+| Step 3 — Bundle Initialization              | 1 week             |
+| Step 4 — Vehicle Processing & Rendering     | 2 weeks            |
+| Step 5 — Assemble Bundle                    | 1 week             |
+| Step 6 — Signing Integration (incl. Webhook)| 2 weeks            |
+| Step 7 — Finalization                       | 1 week             |
+| Step 8 — Delivery to OnBase                 | 1 week             |
+| Step 9 — Parallel Invoice Flow              | 1 week             |
+| Integration & End-to-End Testing            | 2 weeks            |
+
+**Total development time (solo):** ~11–13 weeks of focused work.  
+
+**Notes:**  
+- Signing integration (Step 6) and vehicle rendering (Step 4) are the most time-consuming and uncertain parts.  
+- Testing, retries, and error handling are included in the Integration & Testing phase.  
+- Timeline assumes one developer working end-to-end with no external blockers.  
 
 # 5. Deliverables
 
-* **IaC** for S3, Lambda, Step Functions, API Gateway, DynamoDB, IAM, alarms
-* **DynamoDB schema** (single table, PK/SK only; timestamps)
-* **Lambdas:** Ingest, Initialize Bundle, Enrich, Render, Assemble Bundle PDF, Create Signing Session (task-token), Webhook, Stamp, Deliver to OnBase, Invoice
-* **Test assets:** sample interface files & invoice XML; E2E test plan
+* **Infrastructure-as-Code (IaC)**  
+  - Definitions for S3, DynamoDB, Step Functions, Lambda, API Gateway, IAM roles/policies.  
+  - Reusable deployment pipeline for dev/staging/prod environments.  
+
+* **DynamoDB Schema Documentation**  
+  - Entity structure for header + vehicles (PK/SK design).  
+  - Status lifecycle: `NEW → READY → RENDERED → SIGNED → DELIVERED`.  
+  - Use of `sequence_no` for deterministic bundling.  
+
+* **Lambda Functions**  
+  - Ingest (S3-triggered)  
+  - Initialize Bundle  
+  - Vehicle Enrichment & Rendering  
+  - Assemble Bundle PDF  
+  - Create Signing Session (task token)  
+  - Webhook Receiver (API Gateway integration)  
+  - Finalize Signing  
+  - Deliver to OnBase  
+  - Invoice Processor  
+
+* **Step Functions State Machine**  
+  - ASL definition for the full contract workflow.  
+  - Map states for vehicle processing and delivery.  
+  - Error handling, retries, and timeouts defined per state.  
+
+* **Testing Assets & Plan**  
+  - Sample NSC interface files and invoice XML.  
+  - End-to-end test plan including:  
+    - Happy path (all vehicles delivered)  
+    - Retry/idempotency cases  
+    - Partial failures and recovery  
+    - Webhook resume flow  
+
+* **Operational Runbook**  
+  - How to monitor Step Functions executions and DynamoDB status.  
+  - How to retry or reprocess failed bundles/vehicles.  
+  - Handling of partial deliveries.  
+  - Guidance on alarms and alert responses.  
+
 
 
