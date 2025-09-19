@@ -10,7 +10,7 @@ Serverless, event-driven. **Ingestion stays thin**; long-lived orchestration run
 
 **Initialize Bundle → Process Vehicles (Map) → Assemble Bundle PDF → Create Signing Session (Task Token) → Deliver to OnBase (Map).
 
-Unsigned PDFS are written temporarily to S3. The invoice path runs in parallel (Figure 1).
+Unsigned PDFS are written to S3. The invoice path runs in parallel (Figure 1).
 
 ![Alt text](architecture/pdf_signing.png)
 Figure 1. Architecture overview.
