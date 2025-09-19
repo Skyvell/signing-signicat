@@ -176,14 +176,14 @@ Figure 1. Architecture overview.
 
 # 3. Implementation Plan (Agile / Chronological)
 
-## Step 1 — Foundations & Infrastructure
+**Step 1 — Foundations & Infrastructure**
 - Set up baseline IaC for core AWS services (S3, DynamoDB, Step Functions, Lambda, API Gateway).  
 - Establish CI/CD pipeline. 
 - Create isolated dev/staging environments with their own resources and keys.  
 
 **Goal:** Have a deployable skeleton environment with minimal resources.  
 
-## Step 2 — Ingest & Orchestration
+**Step 2 — Ingest & Orchestration**
 - Implement S3-triggered Ingest Lambda:  
   - Parse interface files.  
   - Validate rows.  
@@ -193,7 +193,7 @@ Figure 1. Architecture overview.
 
 **Goal:** Reliable ingestion flow that seeds DynamoDB and starts orchestration.  
 
-## Step 3 — Bundle Initialization
+**Step 3 — Bundle Initialization**
 - Implement Initialize Bundle Lambda:  
   - Query DynamoDB for header + vehicles.  
   - Validate uniqueness and that every vehicle has a `sequence_no`.  
@@ -204,7 +204,7 @@ Figure 1. Architecture overview.
 
 ---
 
-## Step 4 — Vehicle Processing & Rendering
+**Step 4 — Vehicle Processing & Rendering**
 - Implement vehicle processing in a Step Functions Map state:  
   - Each iterator Lambda receives `{ bundle_id, contract_id }`.  
   - Read vehicle item from DynamoDB.  
@@ -214,7 +214,7 @@ Figure 1. Architecture overview.
 
 **Goal:** Individual vehicle contracts are enriched and rendered correctly.
 
-## Step 5 — Assemble Bundle
+**Step 5 — Assemble Bundle**
 - Implement Assembly Lambda:  
   - Query all vehicle items for the bundle.  
   - Sort vehicles by `sequence_no`.  
@@ -223,7 +223,7 @@ Figure 1. Architecture overview.
 
 **Goal:** Bundled contracts are available as a single unsigned PDF, tracked in DynamoDB.  
 
-## Step 6 — Signing Integration
+**Step 6 — Signing Integration**
 - Implement Create Signing Session Lambda:  
   - Read `unsigned_bundle_uri` from the header.  
   - Initiate signing session with Signicat (pre-signed S3 URL).  
@@ -234,7 +234,7 @@ Figure 1. Architecture overview.
 
 **Goal:** Full signing loop established, with workflow paused and resumed via webhook.
 
-## Step 7 — Finalization
+**Step 7 — Finalization**
 - Implement Finalize Signing Lambda:  
   - Download signed bundle from Signicat.  
   - Write finalized signed bundle to permanent S3 storage.  
@@ -242,7 +242,7 @@ Figure 1. Architecture overview.
 
 **Goal:** Produce finalized, signed contracts ready for delivery and archive.  
 
-## Step 8 — Delivery to OnBase
+**Step 8 — Delivery to OnBase**
 - Implement delivery Map state:  
   - Each iterator Lambda receives `{ bundle_id, contract_id }`.  
   - Read vehicle item and the header’s `signed_bundle_uri` + `signing_log_uri`.  
@@ -253,7 +253,7 @@ Figure 1. Architecture overview.
 
 **Goal:** Signed contracts are reliably delivered to OnBase with per-vehicle tracking.  
 
-## Step 9 — Parallel Invoice Flow
+**Step 9 — Parallel Invoice Flow**
 - Implement invoice processing Lambda:  
   - Parse invoice XML.  
   - Generate invoice PDF.  
