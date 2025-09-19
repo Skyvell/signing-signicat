@@ -177,81 +177,89 @@ Figure 1. Architecture overview.
 # 3. Implementation Plan (Agile / Chronological)
 
 ## Step 1 — Foundations & Infrastructure
-- Set up baseline IaC for core AWS services (S3, DynamoDB, Step Functions, Lambda, API Gateway).
-- Establish CI/CD pipeline.
-- Create development/staging environments with isolated keys and buckets.
+- Set up baseline IaC for core AWS services (S3, DynamoDB, Step Functions, Lambda, API Gateway).  
+- Establish CI/CD pipeline. 
+- Create isolated dev/staging environments with their own resources and keys.  
 
-**Goal:** Have a deployable skeleton environment with minimal resources.
+**Goal:** Have a deployable skeleton environment with minimal resources.  
 
 ## Step 2 — Ingest & Orchestration
-- Implement S3-triggered ingest Lambda:
-  - Parse interface files.
-  - Validate rows.
-  - Write header + vehicles into DynamoDB with conditional puts (idempotent).
-- Implement start-once lock and kick off one Step Functions execution per bundle.
+- Implement S3-triggered Ingest Lambda:  
+  - Parse interface files.  
+  - Validate rows.  
+  - Write header + vehicles into DynamoDB with conditional puts (idempotent).  
+- Add start-once lock on header (`started_at`).  
+- Launch one Step Functions execution per bundle with `{ bundle_id }`.  
 
-**Goal:** Reliable ingestion flow that seeds DynamoDB and launches the state machine.
+**Goal:** Reliable ingestion flow that seeds DynamoDB and starts orchestration.  
 
 ## Step 3 — Bundle Initialization
-- Implement Initialize Bundle Lambda:
-  - Query DynamoDB for header + vehicles.
-  - Validate uniqueness and order.
-  - Persist `bundle_order.json` (manifest).
-- Emit references for artifacts and vehicle list to the workflow.
+- Implement Initialize Bundle Lambda:  
+  - Query DynamoDB for header + vehicles.  
+  - Validate uniqueness and that every vehicle has a `sequence_no`.  
+  - Count vehicles and update header with `vehicle_count`.  
+  - Set header status to `READY`.  
 
-**Goal:** Deterministic per-bundle setup, ready for processing.
+**Goal:** Deterministic bundle setup with ordering and vehicle count tracked in DynamoDB.  
+
+---
 
 ## Step 4 — Vehicle Processing & Rendering
-- Implement vehicle processing in a Map state:
-  - Enrich vehicle data.
-  - Update DynamoDB status.
-  - Render contract PDFs (per-page).
-  - Save short-lived artifacts.
-- Return references for downstream assembly.
+- Implement vehicle processing in a Step Functions Map state:  
+  - Each iterator Lambda receives `{ bundle_id, contract_id }`.  
+  - Read vehicle item from DynamoDB.  
+  - Enrich with external lookups if required.  
+  - Render contract PDF pages into S3 storage.  
+  - Update vehicle status to `RENDERED`.  
 
 **Goal:** Individual vehicle contracts are enriched and rendered correctly.
 
 ## Step 5 — Assemble Bundle
-- Implement assembly Lambda:
-  - Read `bundle_order.json` and vehicle page references.
-  - Concatenate all pages into a single unsigned PDF.
-  - Write the unsigned bundle to storage.
+- Implement Assembly Lambda:  
+  - Query all vehicle items for the bundle.  
+  - Sort vehicles by `sequence_no`.  
+  - Concatenate their rendered pages into one unsigned PDF.  
+  - Store the unsigned bundle in S3 and update header with `unsigned_bundle_uri`.  
 
-**Goal:** Bundled contracts are available as a single PDF.
+**Goal:** Bundled contracts are available as a single unsigned PDF, tracked in DynamoDB.  
 
 ## Step 6 — Signing Integration
-- Implement Create Signing Session Lambda:
-  - Provide unsigned bundle to Signicat (stream/pre-signed URL).
-  - Store signing request ID and task token.
-- Implement API Gateway + Webhook Lambda:
-  - Resume Step Functions execution on callback.
+- Implement Create Signing Session Lambda:  
+  - Read `unsigned_bundle_uri` from the header.  
+  - Initiate signing session with Signicat (pre-signed S3 URL).  
+  - Store `sign_request_id` and `wait_task_token` on the header.  
+- Implement API Gateway + Webhook Lambda:  
+  - On callback, read `bundle_id` from payload.  
+  - Look up header and use stored task token to resume Step Functions execution.  
 
 **Goal:** Full signing loop established, with workflow paused and resumed via webhook.
 
-## Step 7 — Stamping & Finalization
-- Implement stamping Lambda:
-  - Download signed PDF from Signicat.
-  - Apply visible stamps to all pages.
-  - Write final signed bundle to permanent storage.
+## Step 7 — Finalization
+- Implement Finalize Signing Lambda:  
+  - Download signed bundle from Signicat.  
+  - Write finalized signed bundle to permanent S3 storage.  
+  - Update header with `signed_bundle_uri`, `signing_log_uri`, and status = `SIGNED`.  
 
-**Goal:** Produce finalized, stamped contracts suitable for delivery and archive.
+**Goal:** Produce finalized, signed contracts ready for delivery and archive.  
 
 ## Step 8 — Delivery to OnBase
-- Implement delivery Map state:
-  - Build per-vehicle DIPs.
-  - Deliver signed bundle + signing log/ID.
-  - Update vehicle statuses and capture receipts.
-  - Mark bundle status as `DELIVERED` or `PARTIAL_FAILED`.
+- Implement delivery Map state:  
+  - Each iterator Lambda receives `{ bundle_id, contract_id }`.  
+  - Read vehicle item and the header’s `signed_bundle_uri` + `signing_log_uri`.  
+  - Build a DIP package for the vehicle.  
+  - Deliver signed bundle + signing log/ID + DIP to OnBase.  
+  - Update vehicle with `status = DELIVERED`, `dip_id`, `onbase_receipt`, and `delivered_at`.  
+- After Map finishes, update header status to `DELIVERED` or `PARTIAL_FAILED`.  
 
-**Goal:** Signed contracts are delivered into OnBase with proper logging.
+**Goal:** Signed contracts are reliably delivered to OnBase with per-vehicle tracking.  
 
 ## Step 9 — Parallel Invoice Flow
-- Implement invoice processing Lambda:
-  - Parse invoice XML.
-  - Generate invoice PDF.
-  - Distribute via email to dealer + SF mailboxes.
+- Implement invoice processing Lambda:  
+  - Parse invoice XML.  
+  - Generate invoice PDF.  
+  - Distribute via email to dealer + SF mailboxes.  
 
-**Goal:** Independent, working invoice distribution path.
+**Goal:** Independent invoice distribution path runs in parallel to contract workflow.  
 
 ---
 
