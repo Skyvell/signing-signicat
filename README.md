@@ -8,7 +8,7 @@ Build a serverless AWS solution that (a) creates one contract PDF per vehicle fr
 
 Serverless, event-driven. **Ingestion stays thin**; long-lived orchestration runs in a single **AWS Step Functions (Standard)** execution per bundle:
 
-**Initialize Bundle → Process Vehicles (Map) → Assemble Bundle PDF → Create Signing Session (Task Token) → Stamp & (Optional) Seal → Deliver to OnBase (Map) → Closeout & Notifications**
+**Initialize Bundle → Process Vehicles (Map) → Assemble Bundle PDF → Create Signing Session (Task Token) → Deliver to OnBase (Map).
 
 Unsigned PDFS are written temporarily to S3. The invoice path runs in parallel (Figure 1).
 
@@ -81,14 +81,12 @@ NOTE: To be decided how to structure the lambdas inside the step function. Proba
 _Per vehicle:_  
 * Enrich data with lookups  
 * Update vehicle status in DynamoDB  
-* Render PDF pages and store short-lived artifacts  
-* Emit small references to the generated pages  
+* Render PDF pages and store short-lived artifacts    
 
 **3) Assemble Bundle PDF (Lambda)**  
 * Read the bundle manifest + per-vehicle page references  
 * Concatenate all pages in memory into a single PDF  
-* Write one unsigned bundle to storage  
-* Emit a pointer to the unsigned bundle  
+* Write one unsigned bundle to storage   
 
 **4) Create Signing Session (Task Token) (Lambda)**  
 * Provide the unsigned bundle to Signicat (stream or pre-signed URL)  
@@ -99,9 +97,8 @@ _Per vehicle:_
 * Receive signing status for the bundle  
 * Resolve the waiting task token to continue the workflow  
 
-**5) Stamp (Lambda)**  
-* Download signed PDF from Signicat  
-* Apply visible stamps on all pages  
+**5) Finalize signing**  
+* Download signed PDF from Signicat   
 * Write the final stamped PDF to permanent storage  
 * Update bundle header
 
