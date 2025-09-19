@@ -129,15 +129,15 @@ _Per vehicle:_
   "sk": "HEADER#0",
   "item_type": "header",
 
-  "status": "NEW",                  // NEW | READY | SIGNED | DELIVERED | PARTIAL_FAILED | FAILED
-  "vehicle_count": 42,              // convenience count
+  "status": "NEW",                       // NEW | READY | SIGNED | DELIVERED | PARTIAL_FAILED | FAILED
+  "vehicle_count": 42,                   // convenience count
 
-  "unsigned_bundle_uri": null,      // set after assemble
-  "signed_bundle_uri": null,        // set after signing + stamping
-  "signing_log_uri": null,          // set after signing
+  "unsigned_bundle_uri": null,           // set after assemble
+  "signed_bundle_uri": null,             // set after signing + stamping
+  "signing_log_uri": null,               // set after signing
 
-  "sign_request_id": null,          // set when signing session is created
-  "wait_task_token": null,          // set before SFN wait; read by webhook
+  "sign_request_id": null,               // set when signing session is created
+  "wait_task_token": null,               // set before SFN wait; read by webhook
 
   "started_at": "2025-09-15T21:10:00Z",  // start-once lock
   "created_at": "2025-09-15T21:00:00Z",
