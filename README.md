@@ -69,7 +69,7 @@ Figure 1. Architecture overview.
 
 ### Steps 1–6 — Per-bundle state machine (inside SFN)
 
-> **Note:** We can merge smaller states into larger Lambdas depending on throughput and cost goals. Payloads remain minimal — Step Functions just passes `bundle_id` (and in Maps, `bundle_id + contract_id`).
+> **Note:** We can merge smaller states into larger Lambdas depending on throughput and goals. Payloads remain minimal — Step Functions just passes `bundle_id` (and in Maps, `bundle_id + contract_id`).
 
 
 **1) Initialize Bundle (Lambda)**  
